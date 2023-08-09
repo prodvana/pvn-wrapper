@@ -9,22 +9,13 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/prodvana/pvn-wrapper/result"
 	"github.com/spf13/cobra"
 )
 
 const (
 	PvnWrapperVersion = "0.0.2"
 )
-
-type ResultType struct {
-	ExitCode         int    `json:"exit_code"`  // Exit code of wrapped process. -1 if process failed to execute.
-	ExecError        string `json:"exec_error"` // Internal error when trying to execute wrapped process.
-	Stdout           []byte `json:"stdout"`
-	Stderr           []byte `json:"stderr"`
-	Version          string `json:"version"`     // Wrapper version.
-	StartTimestampNs int64  `json:"start_ts_ns"` // Timestamp when the process began executing, in ns.
-	DurationNs       int64  `json:"duration_ns"` // Total execution duration of the process, in ns.
-}
 
 var execCmd = &cobra.Command{
 	Use:   "exec",
@@ -48,7 +39,7 @@ pvn-wrapper exec my-binary --my-flag=value my-args ...
 		execCmd.Stdout = stdout
 		execCmd.Stderr = stderr
 
-		var result ResultType
+		var result result.ResultType
 
 		err := execCmd.Run()
 		duration := time.Since(startTs)
