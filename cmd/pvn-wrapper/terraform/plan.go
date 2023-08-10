@@ -2,12 +2,19 @@ package terraform
 
 import (
 	"context"
+	go_errors "errors"
+	"os"
 	"os/exec"
 
 	"github.com/pkg/errors"
-	"github.com/prodvana/pvn-wrapper/result"
+	"github.com/prodvana/pvn-wrapper/cmdutil"
 	"github.com/spf13/cobra"
 )
+
+var planFlags = struct {
+	planOut            string
+	planExplanationOut string
+}{}
 
 var planCmd = &cobra.Command{
 	Use:     "plan",
@@ -15,7 +22,8 @@ var planCmd = &cobra.Command{
 	Aliases: []string{"tf"},
 	Long: `terraform plan wrapper.
 
-Takes all the same input that terraform plan would, but handles uploading plan file to Prodvana and exiting with 0, 1, or 2.
+Takes all the same input that terraform plan would, but handles creating plan files and explanation, then exiting with 0, 1, or 2.
+Meant to be used as the fetch function of the terraform-runner runtime extension.
 
 0 - No changes detected
 1 - Unknown error
@@ -27,42 +35,55 @@ To pass flags to terraform plan, use --
 
 pvn-wrapper terraform plan -- --refresh=false
 
-pvn-wrapper will always pass --detailed-exitcode and --out.
+pvn-wrapper will always pass --detailed-exitcode, --out, and --no-color.
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		result.RunWrapper(func(ctx context.Context) (*result.ResultType, []result.OutputFileUpload, error) {
-			const terraformOutFile = "plan.tfplan"
-			planArgs := []string{"plan"}
-			planArgs = append(planArgs, args...)
-			planArgs = append(planArgs,
-				"--detailed-exitcode",
-				"--out",
-				terraformOutFile,
-			)
-			execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
-			res, err := result.RunCmd(execCmd)
-			if err != nil {
-				return res, nil, errors.Wrap(err, "plan command failed")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+		planArgs := []string{"plan"}
+		planArgs = append(planArgs, args...)
+		planArgs = append(planArgs,
+			"--detailed-exitcode",
+			"--no-color",
+			"--out",
+			planFlags.planOut,
+		)
+		execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+		var exitCode int
+		err := execCmd.Run()
+		if err != nil {
+			var exitErr *exec.ExitError
+			if go_errors.As(err, &exitErr) {
+				exitCode = exitErr.ExitCode()
+			} else {
+				return errors.Wrap(err, "plan command failed unexpectedly")
 			}
-			showCommand := exec.CommandContext(ctx, terraformPath, "show", terraformOutFile)
-			output, err := showCommand.CombinedOutput()
+		}
+		if exitCode == 0 || exitCode == 2 {
+			showCommand := exec.CommandContext(ctx, terraformPath, "show", "--no-color", planFlags.planOut)
+			planExplanation, err := os.Create(planFlags.planExplanationOut)
 			if err != nil {
-				return res, nil, errors.Wrap(err, "show command failed")
+				return errors.Wrapf(err, "failed to open %s", planFlags.planExplanationOut)
 			}
-			return res, []result.OutputFileUpload{
-				{
-					Name: result.PlanOutput,
-					Path: terraformOutFile,
-				},
-				{
-					Name:    result.PlanExplanation,
-					Content: output,
-				},
-			}, err
-		})
+			defer func() { _ = planExplanation.Close() }()
+			showCommand.Stderr = os.Stderr
+			showCommand.Stdout = planExplanation
+			err = showCommand.Run()
+			if err != nil {
+				return errors.Wrap(err, "show command failed")
+			}
+		}
+		os.Exit(exitCode)
+		return nil
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(planCmd)
+
+	planCmd.Flags().StringVar(&planFlags.planOut, "plan-out", "", "Plan file out location")
+	cmdutil.Must(planCmd.MarkFlagRequired("plan-out"))
+	planCmd.Flags().StringVar(&planFlags.planExplanationOut, "plan-explanation-out", "", "Plan file out location")
+	cmdutil.Must(planCmd.MarkFlagRequired("plan-explanation-out"))
 }
