@@ -31,7 +31,7 @@ pvn-wrapper will always pass --detailed-exitcode and --out.
 	Run: func(cmd *cobra.Command, args []string) {
 		result.RunWrapper(func(ctx context.Context) (*result.ResultType, []result.OutputFileUpload, error) {
 			const terraformOutFile = "plan.tfplan"
-			var planArgs []string
+			planArgs := []string{"plan"}
 			planArgs = append(planArgs, args...)
 			planArgs = append(planArgs,
 				"--detailed-exitcode",
