@@ -1,9 +1,12 @@
 package result
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -52,4 +55,30 @@ func RunWrapper(run func() (*ResultType, error)) {
 	// This is to maintain compatibility with existing task execution infrastructure.
 	// Once we enforce the use of this wrapper, we can safely exit 0 here.
 	os.Exit(result.ExitCode)
+}
+
+func RunCmd(cmd *exec.Cmd) (*ResultType, error) {
+	// TODO: Limit stdout/stderr to a reasonable size while preserving useful error context.
+	// Kubernetes output is usually limited to 10MB.
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	var result ResultType
+
+	err := cmd.Run()
+
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			result.ExitCode = exitErr.ExitCode()
+		} else {
+			return nil, err
+		}
+	}
+
+	result.Stdout = stdout.Bytes()
+	result.Stderr = stderr.Bytes()
+	return &result, nil
 }

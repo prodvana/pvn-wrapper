@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"errors"
 	"os"
 	"os/exec"
 
@@ -24,29 +22,7 @@ pvn-wrapper exec my-binary --my-flag=value my-args ...
 			execCmd := exec.Command(args[0], args[1:]...)
 			execCmd.Env = os.Environ()
 
-			// TODO: Limit stdout/stderr to a reasonable size while preserving useful error context.
-			// Kubernetes output is usually limited to 10MB.
-			stdout := new(bytes.Buffer)
-			stderr := new(bytes.Buffer)
-			execCmd.Stdout = stdout
-			execCmd.Stderr = stderr
-
-			var result result.ResultType
-
-			err := execCmd.Run()
-
-			if err != nil {
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
-					result.ExitCode = exitErr.ExitCode()
-				} else {
-					return nil, err
-				}
-			}
-
-			result.Stdout = stdout.Bytes()
-			result.Stderr = stderr.Bytes()
-			return &result, nil
+			return result.RunCmd(execCmd)
 		})
 	},
 }
