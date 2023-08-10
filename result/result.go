@@ -36,25 +36,24 @@ type File struct {
 type OutputName string
 
 const (
-	PlanOutput OutputName = "plan"
+	PlanOutput      OutputName = "plan"
+	PlanExplanation OutputName = "plan_explanation"
 )
 
 type OutputFileUpload struct {
 	Name OutputName
-	Path string
+
+	// only one or the other can be specified
+	Path    string
+	Content []byte
 }
 
 const (
 	PvnWrapperVersion = "0.0.2"
 )
 
-func chunkFile(path string, process func([]byte) error) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
-	reader := bufio.NewReader(file)
+func chunkReader(reader io.Reader, process func([]byte) error) error {
+	reader = bufio.NewReader(reader)
 	const chunkSize = 1024 * 1024
 	buf := make([]byte, chunkSize)
 	for {
@@ -73,16 +72,35 @@ func chunkFile(path string, process func([]byte) error) error {
 	return nil
 }
 
+func chunkFile(path string, process func([]byte) error) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	return chunkReader(file, process)
+}
+
+func chunkByte(content []byte, process func([]byte) error) error {
+	reader := bytes.NewReader(content)
+	return chunkReader(reader, process)
+}
+
 func uploadOutput(ctx context.Context, blobsClient blobs_pb.BlobsManagerClient, file OutputFileUpload) (string, error) {
 	strm, err := blobsClient.UploadCasBlob(ctx)
 	if err != nil {
 		return "", err
 	}
-	err = chunkFile(file.Path, func(b []byte) error {
+	process := func(b []byte) error {
 		return strm.Send(&blobs_pb.UploadCasBlobReq{
 			Bytes: b,
 		})
-	})
+	}
+	if file.Path != "" {
+		err = chunkFile(file.Path, process)
+	} else {
+		err = chunkByte(file.Content, process)
+	}
 	if err != nil {
 		return "", err
 	}

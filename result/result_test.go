@@ -47,6 +47,13 @@ func TestChunkFile(t *testing.T) {
 				return err
 			}))
 			require.Equal(t, content, buf.String())
+
+			buf = bytes.Buffer{}
+			require.NoError(t, chunkByte([]byte(content), func(b []byte) error {
+				_, err := buf.Write(b)
+				return err
+			}))
+			require.Equal(t, content, buf.String())
 		})
 	}
 }

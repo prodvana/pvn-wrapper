@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/pkg/errors"
 	"github.com/prodvana/pvn-wrapper/result"
 	"github.com/spf13/cobra"
 )
@@ -40,10 +41,22 @@ pvn-wrapper will always pass --detailed-exitcode and --out.
 			)
 			execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
 			res, err := result.RunCmd(execCmd)
+			if err != nil {
+				return res, nil, errors.Wrap(err, "plan command failed")
+			}
+			showCommand := exec.CommandContext(ctx, terraformPath, "show", terraformOutFile)
+			output, err := showCommand.CombinedOutput()
+			if err != nil {
+				return res, nil, errors.Wrap(err, "show command failed")
+			}
 			return res, []result.OutputFileUpload{
 				{
 					Name: result.PlanOutput,
 					Path: terraformOutFile,
+				},
+				{
+					Name:    result.PlanExplanation,
+					Content: output,
 				},
 			}, err
 		})
