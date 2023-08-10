@@ -8,4 +8,10 @@ type ResultType struct {
 	Version          string `json:"version"`     // Wrapper version.
 	StartTimestampNs int64  `json:"start_ts_ns"` // Timestamp when the process began executing, in ns.
 	DurationNs       int64  `json:"duration_ns"` // Total execution duration of the process, in ns.
+	Files            []File
+}
+
+type File struct {
+	AbsPath       string `json:"abs_path"`
+	ContentBlobId string `json:"content_blob_id"`
 }
