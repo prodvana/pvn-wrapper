@@ -1,13 +1,20 @@
 package result
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	go_errors "errors"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/prodvana/prodvana-public/go/prodvana-sdk/client"
+	blobs_pb "github.com/prodvana/prodvana-public/go/prodvana-sdk/proto/prodvana/blobs"
 )
 
 type ResultType struct {
@@ -22,19 +29,76 @@ type ResultType struct {
 }
 
 type File struct {
-	AbsPath       string `json:"abs_path"`
-	ContentBlobId string `json:"content_blob_id"`
+	Name          OutputName `json:"name"`
+	ContentBlobId string     `json:"content_blob_id"`
+}
+
+type OutputName string
+
+const (
+	PlanOutput OutputName = "plan"
+)
+
+type OutputFileUpload struct {
+	Name OutputName
+	Path string
 }
 
 const (
 	PvnWrapperVersion = "0.0.2"
 )
 
+func chunkFile(path string, process func([]byte) error) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	reader := bufio.NewReader(file)
+	const chunkSize = 1024 * 1024
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := reader.Read(buf)
+		if err != nil {
+			if go_errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		err = process(buf[:n])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func uploadOutput(ctx context.Context, blobsClient blobs_pb.BlobsManagerClient, file OutputFileUpload) (string, error) {
+	strm, err := blobsClient.UploadCasBlob(ctx)
+	if err != nil {
+		return "", err
+	}
+	err = chunkFile(file.Path, func(b []byte) error {
+		return strm.Send(&blobs_pb.UploadCasBlobReq{
+			Bytes: b,
+		})
+	})
+	if err != nil {
+		return "", err
+	}
+	resp, err := strm.CloseAndRecv()
+	if err != nil {
+		return "", err
+	}
+	return resp.Id, nil
+}
+
 // Handle the "main" function of wrapper commands.
 // This function never returns.
-func RunWrapper(run func() (*ResultType, error)) {
+func RunWrapper(run func(context.Context) (*ResultType, []OutputFileUpload, error)) {
+	ctx := context.Background()
 	startTs := time.Now()
-	result, err := run()
+	result, outputFiles, err := run(ctx)
 	duration := time.Since(startTs)
 	if err != nil {
 		result := &ResultType{}
@@ -44,6 +108,26 @@ func RunWrapper(run func() (*ResultType, error)) {
 	result.StartTimestampNs = startTs.UnixNano()
 	result.DurationNs = duration.Nanoseconds()
 	result.Version = PvnWrapperVersion
+	if len(outputFiles) > 0 {
+		conn, err := client.MakeProdvanaConnection(client.DefaultConnectionOptions())
+		if err != nil {
+			// TODO(naphat) should we return json in the event of infra errors too?
+			log.Fatal(err)
+		}
+		defer func() { _ = conn.Close() }()
+		blobsClient := blobs_pb.NewBlobsManagerClient(conn)
+		for _, file := range outputFiles {
+			id, err := uploadOutput(ctx, blobsClient, file)
+			if err != nil {
+				// TODO(naphat) should we return json in the event of infra errors too?
+				log.Fatal(err)
+			}
+			result.Files = append(result.Files, File{
+				Name:          file.Name,
+				ContentBlobId: id,
+			})
+		}
+	}
 
 	err = json.NewEncoder(os.Stdout).Encode(result)
 	if err != nil {

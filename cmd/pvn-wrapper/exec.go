@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 
@@ -18,11 +19,12 @@ pvn-wrapper exec my-binary --my-flag=value my-args ...
 `,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		result.RunWrapper(func() (*result.ResultType, error) {
-			execCmd := exec.Command(args[0], args[1:]...)
+		result.RunWrapper(func(ctx context.Context) (*result.ResultType, []result.OutputFileUpload, error) {
+			execCmd := exec.CommandContext(ctx, args[0], args[1:]...)
 			execCmd.Env = os.Environ()
 
-			return result.RunCmd(execCmd)
+			res, err := result.RunCmd(execCmd)
+			return res, nil, err
 		})
 	},
 }

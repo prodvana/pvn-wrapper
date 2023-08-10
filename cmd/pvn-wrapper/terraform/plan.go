@@ -1,9 +1,10 @@
 package terraform
 
 import (
-	"bytes"
+	"context"
 	"os/exec"
 
+	"github.com/prodvana/pvn-wrapper/result"
 	"github.com/spf13/cobra"
 )
 
@@ -27,22 +28,25 @@ pvn-wrapper terraform plan -- --refresh=false
 
 pvn-wrapper will always pass --detailed-exitcode and --out.
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var planArgs []string
-		planArgs = append(planArgs, args...)
-		planArgs = append(planArgs,
-			"--detailed-exitcode",
-			"--out",
-		)
-		execCmd := exec.Command(terraformPath, planArgs...)
-
-		// TODO: Limit stdout/stderr to a reasonable size while preserving useful error context.
-		// Kubernetes output is usually limited to 10MB.
-		stdout := new(bytes.Buffer)
-		stderr := new(bytes.Buffer)
-		execCmd.Stdout = stdout
-		execCmd.Stderr = stderr
-
+	Run: func(cmd *cobra.Command, args []string) {
+		result.RunWrapper(func(ctx context.Context) (*result.ResultType, []result.OutputFileUpload, error) {
+			const terraformOutFile = "plan.tfplan"
+			var planArgs []string
+			planArgs = append(planArgs, args...)
+			planArgs = append(planArgs,
+				"--detailed-exitcode",
+				"--out",
+				terraformOutFile,
+			)
+			execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
+			res, err := result.RunCmd(execCmd)
+			return res, []result.OutputFileUpload{
+				{
+					Name: result.PlanOutput,
+					Path: terraformOutFile,
+				},
+			}, err
+		})
 	},
 }
 
