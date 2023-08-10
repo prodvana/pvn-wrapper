@@ -29,19 +29,12 @@ type ResultType struct {
 }
 
 type File struct {
-	Name          OutputName `json:"name"`
-	ContentBlobId string     `json:"content_blob_id"`
+	Name          string `json:"name"`
+	ContentBlobId string `json:"content_blob_id"`
 }
 
-type OutputName string
-
-const (
-	PlanOutput      OutputName = "plan"
-	PlanExplanation OutputName = "plan_explanation"
-)
-
 type OutputFileUpload struct {
-	Name OutputName
+	Name string
 
 	// only one or the other can be specified
 	Path    string
