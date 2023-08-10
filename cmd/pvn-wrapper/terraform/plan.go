@@ -3,7 +3,6 @@ package terraform
 import (
 	"context"
 	go_errors "errors"
-	"log"
 	"os"
 	"os/exec"
 
@@ -43,12 +42,11 @@ pvn-wrapper will always pass --detailed-exitcode, --out, and --no-color.
 		planArgs := []string{"plan"}
 		planArgs = append(planArgs, args...)
 		planArgs = append(planArgs,
-			"--detailed-exitcode",
-			"--no-color",
-			"--out",
+			"-detailed-exitcode",
+			"-no-color",
+			"-out",
 			planFlags.planOut,
 		)
-		log.Printf("PLAN ARGS: %+v", planArgs)
 		execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
@@ -63,7 +61,7 @@ pvn-wrapper will always pass --detailed-exitcode, --out, and --no-color.
 			}
 		}
 		if exitCode == 0 || exitCode == 2 {
-			showCommand := exec.CommandContext(ctx, terraformPath, "show", "--no-color", planFlags.planOut)
+			showCommand := exec.CommandContext(ctx, terraformPath, "show", "-no-color", planFlags.planOut)
 			planExplanation, err := os.Create(planFlags.planExplanationOut)
 			if err != nil {
 				return errors.Wrapf(err, "failed to open %s", planFlags.planExplanationOut)
