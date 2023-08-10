@@ -27,6 +27,8 @@ const (
 	PvnWrapperVersion = "0.0.2"
 )
 
+// Handle the "main" function of wrapper commands.
+// This function never returns.
 func RunWrapper(run func() (*ResultType, error)) {
 	startTs := time.Now()
 	result, err := run()
@@ -36,11 +38,11 @@ func RunWrapper(run func() (*ResultType, error)) {
 		result.ExecError = err.Error()
 		result.ExitCode = -1
 	}
-	result.StartTimestampNs = result.StartTimestampNs
+	result.StartTimestampNs = startTs.UnixNano()
 	result.DurationNs = duration.Nanoseconds()
 	result.Version = PvnWrapperVersion
 
-	err = json.NewEncoder(os.Stdout).Encode(&result)
+	err = json.NewEncoder(os.Stdout).Encode(result)
 	if err != nil {
 		// If something went wrong during encode/write to stdout, indicate that in stderr and exit non-zero.
 		log.Fatal(err)
