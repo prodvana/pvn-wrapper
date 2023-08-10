@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	go_errors "errors"
+	"log"
 	"os"
 	"os/exec"
 
@@ -47,6 +48,7 @@ pvn-wrapper will always pass --detailed-exitcode, --out, and --no-color.
 			"--out",
 			planFlags.planOut,
 		)
+		log.Printf("PLAN ARGS: %+v", planArgs)
 		execCmd := exec.CommandContext(ctx, terraformPath, planArgs...)
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
