@@ -184,7 +184,7 @@ func RunWrapper(inputFiles []InputFile, run func(context.Context) (*pvn_wrapper.
 				}
 				result.StdoutBlobId = id
 			} else if file.Stderr {
-				if result.StdoutBlobId != "" {
+				if result.StderrBlobId != "" {
 					log.Fatal("internal error: multiple stderr provided")
 				}
 				result.StderrBlobId = id
