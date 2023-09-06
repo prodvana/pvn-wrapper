@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(terraform.RootCmd)
 	rootCmd.Version = version
-	rootCmd.SetVersionTemplate(fmt.Sprintf("{{.Version}} (%s %s)", commit, date))
+	rootCmd.SetVersionTemplate(fmt.Sprintf("{{ .Version }} (%s %s)\n", commit, date))
 }
 
 func main() {
