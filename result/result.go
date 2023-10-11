@@ -221,7 +221,7 @@ func RunWrapper(inputFiles []InputFile, successExitCodes []int32, run func(conte
 					if file.Stdout {
 						fileName = "stdout"
 					}
-					log.Fatalf("failed to upload file %+v: %+v\n", fileName, uploadErr)
+					log.Fatalf("failed to upload file %s: %+v\n", fileName, uploadErr)
 				}
 				continue
 			}
