@@ -40,7 +40,7 @@ func registerTaskDefinitionIfNeeded(taskDefPath string) (string, error) {
 		"--cli-input-json",
 		fmt.Sprintf("file://%s", taskDefPath),
 	)
-	output, err := registerCmd.Output()
+	output, err := cmdutil.RunCmdOutput(registerCmd)
 	if err != nil {
 		return "", err
 	}
