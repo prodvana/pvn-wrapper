@@ -3,6 +3,7 @@ package awsecs
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -85,13 +86,64 @@ func describeService(clusterName, serviceName string) (*describeServicesOutput, 
 	return &describeOutput, nil
 }
 
+func patchTaskDefinition(taskDefPath, pvnServiceId, pvnServiceVersion string) (string, error) {
+	taskDef, err := os.ReadFile(taskDefPath)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read task definition file")
+	}
+	var untypedDef map[string]interface{}
+	if err := json.Unmarshal(taskDef, &untypedDef); err != nil {
+		return "", errors.Wrapf(err, "failed to unmarshal task definition file: %s", string(taskDef))
+	}
+	var tagsList []interface{}
+	tags, hasTags := untypedDef["tags"]
+	if hasTags {
+		var ok bool
+		tagsList, ok = tags.([]interface{})
+		if !ok {
+			return "", errors.Wrapf(err, "unexpected type for tags: %T", tags)
+		}
+	}
+	tagsList = append(tagsList, map[string]string{
+		"key":   "pvn:service_id",
+		"value": pvnServiceId,
+	}, map[string]string{
+		"key":   "pvn:service_version",
+		"value": pvnServiceVersion,
+	})
+	untypedDef["tags"] = tagsList
+
+	updatedTaskDef, err := json.Marshal(untypedDef)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to marshal")
+	}
+
+	tempFile, err := os.CreateTemp("", "ecs-task-definition")
+	if err != nil {
+		return "", errors.Wrap(err, "failed to make tempfile")
+	}
+
+	if _, err := tempFile.Write(updatedTaskDef); err != nil {
+		return "", errors.Wrap(err, "failed to write to tempfile")
+	}
+	if err := tempFile.Close(); err != nil {
+		return "", errors.Wrap(err, "failed to close tempfile")
+	}
+
+	return tempFile.Name(), nil
+}
+
 var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Create or update an ECS service",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(naphat) patch task definition file with our own tags
-		taskArn, err := registerTaskDefinitionIfNeeded(applyFlags.taskDefinitionFile)
+		newTaskDefPath, err := patchTaskDefinition(applyFlags.taskDefinitionFile, applyFlags.pvnServiceId, applyFlags.pvnServiceVersion)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = os.Remove(newTaskDefPath) }()
+		taskArn, err := registerTaskDefinitionIfNeeded(newTaskDefPath)
 		if err != nil {
 			return err
 		}
