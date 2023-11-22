@@ -105,10 +105,10 @@ func patchTaskDefinition(taskDefPath, pvnServiceId, pvnServiceVersion string) (s
 		}
 	}
 	tagsList = append(tagsList, map[string]string{
-		"key":   "pvn:service_id",
+		"key":   "pvn:id",
 		"value": pvnServiceId,
 	}, map[string]string{
-		"key":   "pvn:service_version",
+		"key":   "pvn:version",
 		"value": pvnServiceVersion,
 	})
 	untypedDef["tags"] = tagsList
