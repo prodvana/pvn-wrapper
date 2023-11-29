@@ -237,8 +237,11 @@ var applyCmd = &cobra.Command{
 			"--network-configuration",
 			fmt.Sprintf("awsvpcConfiguration={%s}", strings.Join(networkConfigurations, ",")),
 			"--propagate-tags=TASK_DEFINITION",
+			"--cluster",
+			applyFlags.ecsClusterName,
 		}
 		if serviceOutput.Services[0].Status == "INACTIVE" || serviceOutput.Services[0].Status == "MISSING" {
+			log.Printf("Creating service %s on cluster %s with task ARN %s\n", applyFlags.ecsServiceName, applyFlags.ecsClusterName, taskArn)
 			// create service
 			createCmd := exec.Command(awsPath, append([]string{
 				"ecs",
@@ -252,6 +255,7 @@ var applyCmd = &cobra.Command{
 				return err
 			}
 		} else {
+			log.Printf("Updating service %s on cluster %s with task ARN %s\n", applyFlags.ecsServiceName, applyFlags.ecsClusterName, taskArn)
 			// update service
 			updateCmd := exec.Command(awsPath, append([]string{
 				"ecs",
