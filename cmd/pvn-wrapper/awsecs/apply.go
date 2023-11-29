@@ -48,6 +48,14 @@ func describeTaskDefinition(definition string) (*describeTaskDefinitionOutput, e
 	return &describeOutput, nil
 }
 
+func tagsToMap(tags []tagPair) map[string]string {
+	tagMap := make(map[string]string)
+	for _, tag := range tags {
+		tagMap[tag.Key] = tag.Value
+	}
+	return tagMap
+}
+
 type getResourcesOutput struct {
 	ResourceTagMappingList []struct {
 		ResourceARN string `json:"ResourceARN"`
