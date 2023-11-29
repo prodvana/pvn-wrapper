@@ -40,9 +40,14 @@ func runFetch() (*extensions_pb.FetchOutput, error) {
 			tags := tagsToMap(def.Tags)
 			version := &extensions_pb.ExternalObjectVersion{
 				Replicas: int32(depl.PendingCount) + int32(depl.RunningCount),
+				Active:   depl.Status == "PRIMARY",
 				// TODO(naphat) today we use the service version string to detect drift.
 				// It is currently not possible to change ECS-service-level settings like desired count
 				// without also creating a new version string, so this works.
+			}
+			if version.Replicas == 0 {
+				// skip, this deployment is no longer active and has no replicas left
+				return nil
 			}
 			if tags[serviceIdTagKey] == commonFlags.pvnServiceId {
 				// if the service ID doesn't match, we leave the version unset, essentially treating it as unknown

@@ -319,8 +319,7 @@ var applyCmd = &cobra.Command{
 				return err
 			}
 		}
-		waitCmd := exec.Command(awsPath, "ecs", "wait", "services-stable", "--services", commonFlags.ecsServiceName, "--cluster", commonFlags.ecsClusterName)
-		return cmdutil.RunCmd(waitCmd)
+		return nil
 	},
 }
 
