@@ -19,10 +19,40 @@ const (
 	serviceVersionTagKey = "pvn:version"
 )
 
+type tagPair struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type describeTaskDefinitionOutput struct {
+	Tags []tagPair `json:"tags"`
+}
+
+func describeTaskDefinition(definition string) (*describeTaskDefinitionOutput, error) {
+	describeCmd := exec.Command(
+		awsPath,
+		"ecs",
+		"describe-task-definition",
+		"--include=TAGS",
+		"--task-definition",
+		definition,
+	)
+	output, err := cmdutil.RunCmdOutput(describeCmd)
+	if err != nil {
+		return nil, err
+	}
+	var describeOutput describeTaskDefinitionOutput
+	if err := json.Unmarshal(output, &describeOutput); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarsal describe-task-definition output")
+	}
+	return &describeOutput, nil
+}
+
 type getResourcesOutput struct {
 	ResourceTagMappingList []struct {
 		ResourceARN string `json:"ResourceARN"`
-		Tags        []struct {
+		// this endpoint uses capital CamelCase so it cannot use the same struct as the other endpoints
+		Tags []struct {
 			Key   string `json:"Key"`
 			Value string `json:"Value"`
 		} `json:"Tags"`
@@ -105,10 +135,28 @@ func registerTaskDefinitionIfNeeded(taskDefPath, pvnServiceId, pvnServiceVersion
 	return taskArn, nil
 }
 
+type networkConfiguration struct {
+	AwsvpcConfiguration *struct {
+		Subnets        []string `json:"subnets"`
+		SecurityGroups []string `json:"securityGroups"`
+		AssignPublicIp string   `json:"assignPublicIp"`
+	} `json:"awsvpcConfiguration"`
+}
+
 type describeServicesOutput struct {
 	Services []struct {
 		Status         string `json:"status"`
 		TaskDefinition string `json:"taskDefinition"`
+		Deployments    []struct {
+			Status               string               `json:"status"`
+			TaskDefinition       string               `json:"taskDefinition"`
+			DesiredCount         int                  `json:"desiredCount"`
+			PendingCount         int                  `json:"pendingCount"`
+			RunningCount         int                  `json:"runningCount"`
+			NetworkConfiguration networkConfiguration `json:"networkConfiguration"`
+			RolloutState         string               `json:"rolloutState"`
+			RolloutStateReason   string               `json:"rolloutStateReason"`
+		} `json:"deployments"`
 	} `json:"services"`
 	Failures []struct {
 		Reason string `json:"reason"`
@@ -132,6 +180,15 @@ func describeService(clusterName, serviceName string) (*describeServicesOutput, 
 	var describeOutput describeServicesOutput
 	if err := json.Unmarshal(output, &describeOutput); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarsal describe-services output")
+	}
+	if len(describeOutput.Failures) > 0 {
+		if describeOutput.Failures[0].Reason != "MISSING" {
+			return nil, errors.Errorf("unexpected failure reason: %s", describeOutput.Failures[0].Reason)
+		}
+	} else {
+		if len(describeOutput.Services) != 1 {
+			return nil, errors.Errorf("unexpected number of services: %d", len(describeOutput.Services))
+		}
 	}
 	return &describeOutput, nil
 }
@@ -183,6 +240,13 @@ func patchTaskDefinition(taskDefPath, pvnServiceId, pvnServiceVersion string) (s
 	return tempFile.Name(), nil
 }
 
+func serviceMissing(output *describeServicesOutput) bool {
+	if len(output.Failures) > 0 {
+		return output.Failures[0].Reason == "MISSING"
+	}
+	return output.Services[0].Status == "INACTIVE"
+}
+
 var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Create or update an ECS service",
@@ -200,15 +264,6 @@ var applyCmd = &cobra.Command{
 		taskArn, err := registerTaskDefinitionIfNeeded(newTaskDefPath, commonFlags.pvnServiceId, commonFlags.pvnServiceVersion, serviceOutput)
 		if err != nil {
 			return err
-		}
-		if len(serviceOutput.Failures) > 0 {
-			if serviceOutput.Failures[0].Reason != "MISSING" {
-				return errors.Errorf("unexpected failure reason: %s", serviceOutput.Failures[0].Reason)
-			}
-		} else {
-			if len(serviceOutput.Services) != 1 {
-				return errors.Errorf("unexpected number of services: %d", len(serviceOutput.Services))
-			}
 		}
 		networkConfigurations := []string{
 			fmt.Sprintf("subnets=[%s]", strings.Join(commonFlags.subnets, ",")),
@@ -228,7 +283,7 @@ var applyCmd = &cobra.Command{
 			"--cluster",
 			commonFlags.ecsClusterName,
 		}
-		if serviceOutput.Services[0].Status == "INACTIVE" || serviceOutput.Services[0].Status == "MISSING" {
+		if serviceMissing(serviceOutput) {
 			log.Printf("Creating service %s on cluster %s with task ARN %s\n", commonFlags.ecsServiceName, commonFlags.ecsClusterName, taskArn)
 			// create service
 			createCmd := exec.Command(awsPath, append([]string{
