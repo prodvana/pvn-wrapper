@@ -13,6 +13,8 @@ import (
 	extensions_pb "github.com/prodvana/prodvana-public/go/prodvana-sdk/proto/prodvana/runtimes/extensions"
 	"github.com/prodvana/pvn-wrapper/cmdutil"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 	knative_serving "knative.dev/serving/pkg/apis/serving/v1"
 	k8s_yaml "sigs.k8s.io/yaml"
 )
@@ -50,6 +52,15 @@ func describeService(service string) (*knative_serving.Service, error) {
 		return nil, err
 	}
 	return unmarshalKnativeService(output)
+}
+
+func getConditionStatus(conditions apis.Conditions, condType apis.ConditionType) corev1.ConditionStatus {
+	for _, cond := range conditions {
+		if cond.Type == condType {
+			return cond.Status
+		}
+	}
+	return corev1.ConditionUnknown
 }
 
 func runFetch() (*extensions_pb.FetchOutput, error) {
@@ -99,6 +110,10 @@ func runFetch() (*extensions_pb.FetchOutput, error) {
 		version.Version = serviceVersion
 	} // otherwise treat as unknown version
 	cloudRunObj.Versions = []*extensions_pb.ExternalObjectVersion{version}
+	if getConditionStatus(apis.Conditions(currentState.Status.Conditions), apis.ConditionReady) == corev1.ConditionTrue {
+		cloudRunObj.Status = extensions_pb.ExternalObject_SUCCEEDED
+	}
+	// TODO(naphat) how to handle failures?
 	return &extensions_pb.FetchOutput{
 		Objects: []*extensions_pb.ExternalObject{
 			cloudRunObj,
