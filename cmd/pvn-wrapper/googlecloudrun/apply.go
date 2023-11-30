@@ -1,7 +1,6 @@
 package googlecloudrun
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 
@@ -21,11 +20,11 @@ func patchSpecFile(specFilePath, pvnServiceId, pvnServiceVersion string) (string
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read task definition file")
 	}
-	var untypedDef map[interface{}]interface{}
+	var untypedDef map[string]interface{}
 	if err := yaml.Unmarshal(taskDef, &untypedDef); err != nil {
 		return "", errors.Wrapf(err, "failed to unmarshal task definition file: %s", string(taskDef))
 	}
-	metadata, err := cmdutil.GetOrCreateUntypedMap(untypedDef, "metadata")
+	metadata, err := cmdutil.GetOrCreateUntypedMapFromStringMap(untypedDef, "metadata")
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +35,7 @@ func patchSpecFile(specFilePath, pvnServiceId, pvnServiceVersion string) (string
 	annotations[idAnnotation] = pvnServiceId
 	annotations[versionAnnotation] = pvnServiceVersion
 
-	updatedTaskDef, err := json.Marshal(untypedDef)
+	updatedTaskDef, err := yaml.Marshal(untypedDef)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to marshal")
 	}
