@@ -111,6 +111,9 @@ var fetchCmd = &cobra.Command{
 	Short: "Fetch current state of an Cloud Run service",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := gcloudAuth(); err != nil {
+			return err
+		}
 		fetchOutput, err := runFetch()
 		if err != nil {
 			return err

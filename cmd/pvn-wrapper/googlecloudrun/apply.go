@@ -61,6 +61,9 @@ var applyCmd = &cobra.Command{
 	Short: "Create or update a Google Cloud Run service",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := gcloudAuth(); err != nil {
+			return err
+		}
 		newSpecPath, err := patchSpecFile(commonFlags.specFile, commonFlags.pvnServiceId, commonFlags.pvnServiceVersion)
 		if err != nil {
 			return err
