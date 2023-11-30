@@ -21,7 +21,7 @@ func patchSpecFile(specFilePath, pvnServiceId, pvnServiceVersion string) (string
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read task definition file")
 	}
-	var untypedDef map[string]interface{}
+	var untypedDef map[interface{}]interface{}
 	if err := yaml.Unmarshal(taskDef, &untypedDef); err != nil {
 		return "", errors.Wrapf(err, "failed to unmarshal task definition file: %s", string(taskDef))
 	}
