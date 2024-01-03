@@ -247,7 +247,7 @@ func patchTaskDefinition(taskDefPath, pvnServiceId, pvnServiceVersion string) (s
 	return tempFile.Name(), nil
 }
 
-func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster, taskArn string) (string, error) {
+func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster, taskArn string, forUpdate bool) (string, error) {
 	serviceSpec, err := os.ReadFile(serviceSpecPath)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read service spec file")
@@ -266,9 +266,10 @@ func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster, taskAr
 		if serviceNameString != ecsServiceName {
 			return "", errors.Errorf("serviceName in service spec file does not match ECS service name from Prodvana Service config. Got %s, want %s", serviceNameString, ecsServiceName)
 		}
-	} else {
-		untypedDef["serviceName"] = ecsServiceName
 	}
+	// delete the service field, as it's passed differently on update vs. create and handled on cli
+	delete(untypedDef, "serviceName")
+	delete(untypedDef, "service")
 	cluster, hasCluster := untypedDef["cluster"]
 	if hasCluster {
 		clusterString, ok := cluster.(string)
@@ -283,6 +284,10 @@ func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster, taskAr
 	}
 
 	untypedDef["taskDefinition"] = taskArn
+
+	if forUpdate {
+		delete(untypedDef, "launchType")
+	}
 
 	updatedTaskDef, err := json.Marshal(untypedDef)
 	if err != nil {
@@ -335,7 +340,13 @@ var applyCmd = &cobra.Command{
 			commonFlags.ecsClusterName,
 		}
 		if !commonFlags.updateTaskDefinitionOnly {
-			newServiceSpecPath, err := patchServiceSpec(commonFlags.serviceSpecFile, commonFlags.ecsServiceName, commonFlags.ecsClusterName, taskArn)
+			newServiceSpecPath, err := patchServiceSpec(
+				commonFlags.serviceSpecFile,
+				commonFlags.ecsServiceName,
+				commonFlags.ecsClusterName,
+				taskArn,
+				!serviceMissing(serviceOutput),
+			)
 			if err != nil {
 				return err
 			}
