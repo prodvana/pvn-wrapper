@@ -247,7 +247,7 @@ func patchTaskDefinition(taskDefPath, pvnServiceId, pvnServiceVersion string) (s
 	return tempFile.Name(), nil
 }
 
-func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster string) (string, error) {
+func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster, taskArn string) (string, error) {
 	serviceSpec, err := os.ReadFile(serviceSpecPath)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read service spec file")
@@ -281,6 +281,8 @@ func patchServiceSpec(serviceSpecPath string, ecsServiceName, ecsCluster string)
 	} else {
 		untypedDef["cluster"] = ecsCluster
 	}
+
+	untypedDef["taskDefinition"] = taskArn
 
 	updatedTaskDef, err := json.Marshal(untypedDef)
 	if err != nil {
@@ -328,13 +330,12 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 		commonArgs := []string{
-			taskArn,
 			"--propagate-tags=TASK_DEFINITION",
 			"--cluster", // must be set regardless of serviceSpec, in case updateTaskDefinitionOnly is set
 			commonFlags.ecsClusterName,
 		}
 		if !commonFlags.updateTaskDefinitionOnly {
-			newServiceSpecPath, err := patchServiceSpec(commonFlags.serviceSpecFile, commonFlags.ecsServiceName, commonFlags.ecsClusterName)
+			newServiceSpecPath, err := patchServiceSpec(commonFlags.serviceSpecFile, commonFlags.ecsServiceName, commonFlags.ecsClusterName, taskArn)
 			if err != nil {
 				return err
 			}
