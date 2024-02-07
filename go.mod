@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/spf13/cobra v1.7.0
 	google.golang.org/grpc v1.59.0
+	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.27.6
 	knative.dev/pkg v0.0.0-20231023151236-29775d7c9e5c
 	knative.dev/serving v0.39.2
@@ -41,7 +42,6 @@ require (
 	google.golang.org/genproto v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apimachinery v0.27.6 // indirect
