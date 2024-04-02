@@ -1,6 +1,7 @@
 package fly
 
 import (
+	"log"
 	"os"
 
 	"github.com/pkg/errors"
@@ -43,7 +44,6 @@ func makeTomlFile(cfg *service_pb.CompiledServiceInstanceConfig) (string, error)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to make tempfile")
 	}
-	defer func() { _ = os.Remove(tempFile.Name()) }()
 	var tomlBytes []byte
 	switch inner := cfg.GetFly().GetTomlOneof().(type) {
 	case *fly.FlyConfig_Inlined:
@@ -57,5 +57,6 @@ func makeTomlFile(cfg *service_pb.CompiledServiceInstanceConfig) (string, error)
 	if err := tempFile.Close(); err != nil {
 		return "", errors.Wrap(err, "failed to close tempfile")
 	}
+	log.Printf("fly toml is:\n%s", string(tomlBytes))
 	return tempFile.Name(), nil
 }

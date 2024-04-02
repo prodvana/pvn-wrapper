@@ -86,15 +86,16 @@ func runFetch() (*extensions_pb.FetchOutput, error) {
 	}
 
 	versions := map[string]*extensions_pb.ExternalObjectVersion{}
+	desiredFlyVersion := fmt.Sprintf("%d", status.Version)
 	for _, machine := range status.Machines {
 		var versionStr string
 		if machine.Config.Env["PVN_SERVICE_ID"] == commonFlags.pvnServiceId {
 			versionStr = machine.Config.Env["PVN_SERVICE_VERSION"]
 		}
-		if _, ok := versions[versionStr]; ok {
+		if _, ok := versions[versionStr]; !ok {
 			versions[versionStr] = &extensions_pb.ExternalObjectVersion{
 				Version: versionStr,
-				Active:  machine.Config.Metadata.FlyReleaseVersion == string(status.Version),
+				Active:  machine.Config.Metadata.FlyReleaseVersion == desiredFlyVersion,
 			}
 		}
 		versions[versionStr].Replicas++
