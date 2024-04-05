@@ -91,8 +91,8 @@ github.com/planetscale/vtprotobuf v0.6.0 h1:nBeETjudeJ5ZgBHUz1fVHvbqUKnYOXNhsIEa
 github.com/planetscale/vtprotobuf v0.6.0/go.mod h1:t/avpk3KcrXxUnYOhZhMXJlSEyie6gQbtLq5NM3loB8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/prodvana/prodvana-public/go/prodvana-sdk v0.3.37 h1:Or5tVJk4JYiaGeP/yytGfwJuYvw8Uys5v6jHSFlIbu8=
-github.com/prodvana/prodvana-public/go/prodvana-sdk v0.3.37/go.mod h1:FzjJuPW6kjapJfmOqSjrPC19uMmNJuIdozPR6C/ZTsQ=
+github.com/prodvana/prodvana-public/go/prodvana-sdk v0.3.38 h1:tjYsKfCOoirIWJKSpUp00r2YPWaftizM6CLuU36DRvg=
+github.com/prodvana/prodvana-public/go/prodvana-sdk v0.3.38/go.mod h1:FzjJuPW6kjapJfmOqSjrPC19uMmNJuIdozPR6C/ZTsQ=
 github.com/prometheus/client_golang v1.17.0 h1:rl2sfwZMtSthVU752MqfjQozy7blglC+1SOtjMAMh+Q=
 github.com/prometheus/client_golang v1.17.0/go.mod h1:VeL+gMmOAxkS2IqfCq0ZmHSL+LjWfWDUmp1mBz9JgUY=
 github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 h1:v7DLqVdK4VrYkVD5diGdl4sxJurKJEMnODWRJlxV9oM=

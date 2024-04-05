@@ -121,7 +121,7 @@ func runFetch() (*extensions_pb.FetchOutput, error) {
 				),
 			},
 			{
-				Type: common_config_pb.ExternalLink_DETAIL,
+				Type: common_config_pb.ExternalLink_APP,
 				Name: "App",
 				Url:  status.AppURL,
 			},
